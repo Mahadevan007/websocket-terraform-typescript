@@ -1,41 +1,95 @@
+data "aws_iam_policy_document" "ws_messenger_lambda_policy" {
+  statement {
+    actions = [
+      "logs:CreateLogGroup",
+      "logs:CreateLogStream",
+      "logs:PutLogEvents"
+    ]
+    effect    = "Allow"
+    resources = ["arn:aws:logs:*:*:*"]
+  }
+}
+
 data "archive_file" "function_archive" {
   type        = "zip"
   source_dir  = "${path.module}/../lambda/dist"
   output_path = "${path.module}/../lambda/dist/function.zip"
 }
 
-resource "aws_lambda_layer_version" "dependency_layer" {
-  filename            = "${path.module}/../dist/layers/layers.zip"
-  layer_name          = "dependency_layer"
-  compatible_runtimes = ["nodejs10.x"]
-  source_code_hash    = "${base64sha256(file("${path.module}/../dist/layers/layers.zip"))}"
+resource "aws_iam_policy" "ws_messenger_lambda_policy" {
+  name   = "WsMessengerLambdaPolicy"
+  path   = "/"
+  policy = data.aws_iam_policy_document.ws_messenger_lambda_policy.json
 }
 
-resource "aws_lambda_function" "lambda" {
+resource "aws_iam_role" "ws_messenger_lambda_role" {
+  name = "WsMessengerLambdaRole"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Principal = {
+          Service = "lambda.amazonaws.com"
+        }
+        Effect = "Allow"
+      }
+    ]
+  })
+
+    inline_policy {
+    name = "DynamoDBAccess"
+    policy = jsonencode({
+      Version = "2012-10-17"
+      Statement = [
+        {
+          Action = [
+            "dynamodb:GetItem",
+            "dynamodb:Query",
+            "dynamodb:PutItem",
+            "dynamodb:UpdateItem",
+            "dynamodb:DeleteItem",
+            "dynamodb:Scan"
+          ],
+          Effect : "Allow"
+          Resource : "*"
+        }
+      ]
+    })
+  }
+  inline_policy {
+    name = "ApiGatewayInvoke"
+    policy = jsonencode({
+      Version = "2012-10-17"
+      Statement = [
+        {
+          Action = [
+              "execute-api:Invoke",
+              "execute-api:ManageConnections"
+          ],
+          Effect : "Allow"
+          Resource: "arn:aws:execute-api:*:*:*"
+        }
+      ]
+    })
+  }
+
+  managed_policy_arns = ["arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"]
+}
+
+resource "aws_lambda_function" "ws_messenger_lambda" {
   filename      = "${data.archive_file.function_archive.output_path}"
-  function_name = "${local.name}"
-  role          = "${aws_iam_role.lambda_role.arn}"
-  handler       = "index.handler"
+  function_name = "ws-messenger"
+  role          = aws_iam_role.ws_messenger_lambda_role.arn
+  handler       = "index.lambdaHandler"
 
   # Lambda Runtimes can be found here: https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtimes.html
-  runtime     = "nodejs10.x"
+  runtime     = "nodejs18.x"
   timeout     = "30"
   memory_size = "${local.lambda_memory}"
-
-  environment {
-    variables = {
-      "EXAMPLE_SECRET" = "${var.example_secret}"
-    }
-  }
 }
 
-resource "aws_lambda_permission" "lambda" {
-  statement_id  = "AllowAPIGatewayInvoke"
-  action        = "lambda:InvokeFunction"
-  function_name = "${aws_lambda_function.lambda.function_name}"
-  principal     = "apigateway.amazonaws.com"
-
-  # The "/*/*" portion grants access from any method on any resource
-  # within the API Gateway REST API.
-  source_arn = "${aws_api_gateway_rest_api.api_gateway_rest_api.execution_arn}/*/*"
+resource "aws_cloudwatch_log_group" "ws_messenger_logs" {
+  name              = "/aws/lambda/${aws_lambda_function.ws_messenger_lambda.function_name}"
+  retention_in_days = 30
 }

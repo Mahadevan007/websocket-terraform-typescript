@@ -18,7 +18,9 @@
   "author": "Rahman Younus <rahman_95@live.co.uk>",
   "license": "MIT",
   "devDependencies": {
-    "@types/aws-lambda": "^8.10.39",
+    "@aws-sdk/client-dynamodb": "^3.245.0",
+    "@aws-sdk/lib-dynamodb": "^3.245.0",
+    "@types/aws-lambda": "^8.10.85",
     "@types/aws-sdk": "^2.7.0",
     "@types/node": "^13.1.1",
     "@typescript-eslint/eslint-plugin": "^2.13.0",
@@ -29,12 +31,21 @@
     "eslint-plugin-import": "^2.19.1",
     "eslint-plugin-prettier": "^3.1.2",
     "husky": "^3.1.0",
-    "prettier": "^1.19.1",
     "ts-node": "^8.5.4",
-    "tsc": "^1.20150623.0",
-    "typescript": "^3.7.4"
+    "tsc": "^1.20150623.0"
   },
   "dependencies": {
-    "aws-sdk": "^2.596.0"
+    "@aws-sdk/client-api-gateway": "^3.245.0",
+    "@aws-sdk/client-apigatewaymanagementapi": "^3.245.0",
+    "@aws-sdk/client-dynamodb": "^3.245.0",
+    "@aws-sdk/lib-dynamodb": "^3.245.0",
+    "aws-lambda": "^1.0.7",
+    "aws-sdk": "^2.596.0",
+    "logger": "^0.0.1",
+    "pino": "^8.6.1",
+    "pino-pretty": "^9.1.1",
+    "pre-commit": "^1.2.2",
+    "prettier": "^2.7.1",
+    "typescript": "^4.5.2"
   }
 }
