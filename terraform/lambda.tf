@@ -1,25 +1,7 @@
-data "aws_iam_policy_document" "ws_messenger_lambda_policy" {
-  statement {
-    actions = [
-      "logs:CreateLogGroup",
-      "logs:CreateLogStream",
-      "logs:PutLogEvents"
-    ]
-    effect    = "Allow"
-    resources = ["arn:aws:logs:*:*:*"]
-  }
-}
-
 data "archive_file" "function_archive" {
   type        = "zip"
   source_dir  = "${path.module}/../lambda/dist"
   output_path = "${path.module}/../lambda/dist/function.zip"
-}
-
-resource "aws_iam_policy" "ws_messenger_lambda_policy" {
-  name   = "WsMessengerLambdaPolicy"
-  path   = "/"
-  policy = data.aws_iam_policy_document.ws_messenger_lambda_policy.json
 }
 
 resource "aws_iam_role" "ws_messenger_lambda_role" {
@@ -33,6 +15,7 @@ resource "aws_iam_role" "ws_messenger_lambda_role" {
           Service = "lambda.amazonaws.com"
         }
         Effect = "Allow"
+
       }
     ]
   })
@@ -82,8 +65,6 @@ resource "aws_lambda_function" "ws_messenger_lambda" {
   function_name = "ws-messenger"
   role          = aws_iam_role.ws_messenger_lambda_role.arn
   handler       = "index.lambdaHandler"
-
-  # Lambda Runtimes can be found here: https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtimes.html
   runtime     = "nodejs18.x"
   timeout     = "30"
   memory_size = "${local.lambda_memory}"
